@@ -11,13 +11,33 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// MongoDB connection with better error handling
+mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000 // Timeout after 5s instead of 30s
+})
+.then(() => {
+  console.log('Connected to MongoDB Atlas');
+})
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+});
+
+// Add connection error handlers
+mongoose.connection.on('error', err => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+});
 
 // Routes
 app.use('/api', apiRoutes);
+
+// Basic route for testing
+app.get('/', (req, res) => {
+  res.json({ message: 'Exercise Tracker API is running' });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -25,16 +45,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Fix port configuration
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-}).on('error', (err) => {
-  if (err.code === 'EACCES') {
-    console.error(`Port ${PORT} requires elevated privileges`);
-  } else if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use`);
-  } else {
-    console.error(err);
-  }
 });
