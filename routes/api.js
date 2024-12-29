@@ -6,11 +6,23 @@ const Exercise = require('../models/Exercise');
 // POST /api/users - Create new user
 router.post('/users', async (req, res) => {
   try {
-    const user = new User({ username: req.body.username });
+    // Ensure username is provided
+    if (!req.body.username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const user = new User({
+      username: req.body.username
+    });
+
     const savedUser = await user.save();
-    res.json({ username: savedUser.username, _id: savedUser._id });
+    // Return exactly the format required: username and _id only
+    return res.json({
+      username: savedUser.username,
+      _id: savedUser._id.toString()
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 });
 
@@ -28,26 +40,48 @@ router.get('/users', async (req, res) => {
 router.post('/users/:_id/exercises', async (req, res) => {
   try {
     const user = await User.findById(req.params._id);
-    if (!user) throw new Error('User not found');
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    // Validate required fields
+    if (!req.body.description || !req.body.duration) {
+      return res.status(400).json({ error: 'Description and duration are required' });
+    }
+
+    // Parse duration to ensure it's a number
+    const duration = parseInt(req.body.duration);
+    if (isNaN(duration)) {
+      return res.status(400).json({ error: 'Duration must be a number' });
+    }
+
+    // Handle date (use current date if not provided)
+    let date = req.body.date ? new Date(req.body.date) : new Date();
+    
+    // Check if date is valid
+    if (req.body.date && date.toString() === 'Invalid Date') {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
 
     const exercise = new Exercise({
       userId: user._id,
       description: req.body.description,
-      duration: Number(req.body.duration),
-      date: req.body.date ? new Date(req.body.date) : new Date()
+      duration: duration,
+      date: date
     });
 
     await exercise.save();
 
-    res.json({
+    // Return exactly the format required
+    return res.json({
+      _id: user._id.toString(),
       username: user.username,
-      description: exercise.description,
-      duration: exercise.duration,
       date: exercise.date.toDateString(),
-      _id: user._id
+      duration: exercise.duration,
+      description: exercise.description
     });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 });
 
@@ -55,10 +89,13 @@ router.post('/users/:_id/exercises', async (req, res) => {
 router.get('/users/:_id/logs', async (req, res) => {
   try {
     const user = await User.findById(req.params._id);
-    if (!user) throw new Error('User not found');
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
 
     let query = { userId: user._id };
 
+    // Handle date filters
     if (req.query.from || req.query.to) {
       query.date = {};
       if (req.query.from) {
@@ -69,24 +106,27 @@ router.get('/users/:_id/logs', async (req, res) => {
       }
     }
 
+    // Get exercises
     let exercises = await Exercise.find(query)
       .limit(Number(req.query.limit) || 0)
-      .select('-_id description duration date');
+      .select('description duration date -_id');
 
-    exercises = exercises.map(e => ({
+    // Format exercises
+    const log = exercises.map(e => ({
       description: e.description,
       duration: e.duration,
       date: e.date.toDateString()
     }));
 
-    res.json({
+    // Return in required format
+    return res.json({
+      _id: user._id.toString(),
       username: user.username,
-      count: exercises.length,
-      _id: user._id,
-      log: exercises
+      count: log.length,
+      log: log
     });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 });
 
