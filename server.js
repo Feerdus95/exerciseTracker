@@ -7,9 +7,9 @@ const apiRoutes = require('./routes/api');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors({ origin: '*' }));
 
 // MongoDB connection with better error handling
 mongoose.connect(process.env.MONGODB_URI, {

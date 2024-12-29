@@ -6,22 +6,31 @@ const Exercise = require('../models/Exercise');
 // POST /api/users - Create new user
 router.post('/users', async (req, res) => {
   try {
-    // Ensure username is provided
-    if (!req.body.username) {
-      return res.status(400).json({ error: 'Username is required' });
+    // Log the request body to debug
+    console.log('Request body:', req.body);
+    
+    // Get username from form data
+    const username = req.body.username;
+    
+    // Validate username
+    if (!username || username.trim() === '') {
+      return res.status(400).json({ error: 'Path `username` is required.' });
     }
 
-    const user = new User({
-      username: req.body.username
-    });
+    // Create new user
+    const newUser = new User({ username: username.trim() });
+    const savedUser = await newUser.save();
 
-    const savedUser = await user.save();
-    // Return exactly the format required: username and _id only
+    // Return user data in the exact format required
     return res.json({
       username: savedUser.username,
       _id: savedUser._id.toString()
     });
   } catch (err) {
+    // Handle duplicate username error
+    if (err.code === 11000) {
+      return res.status(400).json({ error: 'Username already taken' });
+    }
     return res.status(400).json({ error: err.message });
   }
 });
