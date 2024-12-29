@@ -169,11 +169,7 @@ limit
 
 ## Deployment
 
-This project is configured to be deployed on Vercel. The configuration is defined in 
-
-vercel.json
-
-.
+This project is configured to be deployed on Vercel. The configuration is defined in vercel.json.
 
 ## License
 
